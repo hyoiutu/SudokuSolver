@@ -14,7 +14,7 @@ public class DancingLinks{
         DancingNode L, R, U, D; // 左右上下にリンクしているダンシングリンク
         ColumnNode C; // thisが何列目かを表す為のノード(:=カラムノード)
 
-        // ノードn1を現在のノードの下にリンクする
+        // ノードn1を現在のノードの下に双方向リンクする
         DancingNode hookDown(DancingNode n1){
             assert (this.C == n1.C); // n1がthisと同じ列じゃない時java.lang.AssertionError
             // n1の下には元々のノードの下にリンクしていたノードをつける
@@ -31,7 +31,7 @@ public class DancingLinks{
 
         // ノードn1を現在のノードの右にリンクする
         DancingNode hookRight(DancingNode n1){
-        	// n1の右には元々のノードの右にりんくしていたノードをつける
+        	// n1の右には元々のノードの右にリンクしていたノードをつける
             n1.R = this.R;
             // 上記でリンクしたノードを双方向にする。
             n1.R.L = n1;
@@ -91,10 +91,10 @@ public class DancingLinks{
     class ColumnNode extends DancingNode{
         // 現在の列にあるノードの値が1であるノードの個数
     	int size;
-    	// カラムノードの名前(何列目か)
+    	// カラムノードの名前(何列目かを表す)
         String name;
         
-        // コンストラクタ
+        // コンストラクタ(名前を付ける)
         public ColumnNode(String n){
             super();
             size = 0;
@@ -102,10 +102,10 @@ public class DancingLinks{
             // カラムノードCには自分自身を代入
             C = this;
         }
-        // 自分自身はカラムノードである。自分自身が指している列にあるノードがある行をすべて削除する
+        // 自分の列からたどれるノードを全て覆う
         void cover(){
-        	unlinkLR(); // まず自分自身を消去
-            // 自分の列上にある行はすべて削除
+        	unlinkLR(); // まず自分自身のノードを他のColumnNodeから切り離す
+            // 自分の列上にある行はすべてリンクを切る
             for(DancingNode i = this.D; i != this; i = i.D){
                 for(DancingNode j = i.R; j != i; j = j.R){
                     j.unlinkUD();
@@ -114,9 +114,10 @@ public class DancingLinks{
             }
             header.size--; // not part of original
         }
-        // coverメソッド内で実行されるunlinkLRでthisの左右からthisにアクセスすることはできないが
-        // thisからは左右上下にアクセス可能である。それを利用したrelinkUDメソッドとrelinkLRメソッドを実行する
-        // そこからすべてのリンクを構成しなおす
+        // coverメソッドにて切ったリンクを繋ぎ直す
+        // 実際はガベージコレクションによって復元不可だがknuthsAlgorithmXメソッドにおいて
+        // coverする時コレクション内に対象のカラムノードを保存するのでコレクションから取り出して
+        // uncoverメソッドを実行する
         void uncover(){
             for(DancingNode i = this.U; i != this; i = i.U){
                 for(DancingNode j = i.L; j != i; j = j.L){
@@ -126,13 +127,12 @@ public class DancingLinks{
             }
             relinkLR(); // thisの左右を再リンク
             header.size++; // not part of original
-
         }
         
         
     }
 
-    private ColumnNode header; // カラムノードの先頭
+    private ColumnNode header; // 最後の列のカラムノード
     private int updates = 0;
     private SolutionHandler handler;
     // 解答のノードリスト
@@ -142,7 +142,7 @@ public class DancingLinks{
     // アルゴリズムの心臓部
     // Knuth's Algorithm X
     private void knuthsAlgorithmX(int k){
-        if (header.R == header){ // すべてのノードが消えたら
+        if (header.R == header){ // すべてのカラムノードが消えたら
         	
         	// 解答を整理して二次元配列にするhandleSolutionにダンシングリンクを入れる
             handler.handleSolution(answer);
@@ -150,39 +150,38 @@ public class DancingLinks{
         else{
         	// カラムノードに含まれる1の数が最も少ないカラムノードをcに代入
             ColumnNode c = selectColumnNodeHeuristic();
-            // まずc自身をダンシングリンクから外す
+            // まずcの列の全ノードを覆う
             c.cover();
             for(DancingNode r = c.D; r != c; r = r.D){
                 answer.add(r); // cの列を解候補に追加する
-                // cと共通のリンクを持つ列のノードもすべて削除
+                // cから辿れる行から更に辿れる列を覆う
                 for(DancingNode j = r.R; j != r; j = j.R){
                     j.C.cover();
                     
                 }
                 
-                // ダンシングリンクのノードがなくなるまで再帰的に処理
+                // 成功する若しくは失敗するまで再帰的にこの処理を行う
                 knuthsAlgorithmX(k+1);
-                /*
+                // !以下は失敗若しくは次の解を見つける為に行う処理である!
                 // 解答のノードリストにある最後のノードを削除して削除したものをrに代入
                 r = answer.remove(answer.size() - 1);
                 //cをrがある列のカラムノードとする(=最後の列のカラムノード)
                 c = r.C;
                 
-                // アルゴリズムの処理上除去したノードなどの再構成を行う
+                // 前処理でcoverした中で最も下の行から辿れる列を復元する
                 for(DancingNode j = r.L; j != r; j = j.L){
                     j.C.uncover();
-                }*/
-                
+                }
+                // ループして次の行の検証を行う
             }
-            //c.uncover();
+            // 最深の再帰が終了したら列を復元する
+            c.uncover();
         }
-        
-        
     }
 
     // カラムノードのフィールドsizeの数が最も少ないカラムノードを返す
     private ColumnNode selectColumnNodeHeuristic(){
-        int min = Integer.MAX_VALUE; // minに整数の中で最大の数字を入れる
+        int min = Integer.MAX_VALUE; // minにInteger型の中で最大の数字を入れる
         ColumnNode ret = null; // 空のカラムノードretを作る
         // 先頭のカラムノードから最後まで探索
         for(ColumnNode c = (ColumnNode) header.R; c != header; c = (ColumnNode)c.R){
@@ -206,7 +205,8 @@ public class DancingLinks{
         final int COLS = grid[0].length; // ECP行列の列数
         final int ROWS = grid.length; // ECP行列の行数
 
-        // カラムノードの先頭を"header"という名前を付けてインスタンス化
+        // カラムノードの現在リンクが済んでいる最新の部分を
+        // "header"という名前を付けてインスタンス化
         ColumnNode headerNode = new ColumnNode("header");
         // カラムノードの集合
         ArrayList<ColumnNode> columnNodes = new ArrayList<ColumnNode>();
@@ -219,10 +219,10 @@ public class DancingLinks{
             // カラムノードのリストに追加
             columnNodes.add(n);
             // headerとi-1列目の間にi列目のカラムノードをリンクさせる
+            // リンクさせたnをheaderノードとする
             headerNode = (ColumnNode) headerNode.hookRight(n);
         }
-        // headerはCOLS-1列目のカラムノードとする
-        //headerNode = headerNode.R.C;
+        // headerノードを最後の列に持ってくる
         headerNode = (ColumnNode)headerNode.R;
 
         for(int i = 0; i < ROWS; i++){
@@ -248,9 +248,9 @@ public class DancingLinks{
                 }
             }
         }
-        // 0列目のノードはすべて値が１だからsizeはCOLS
+        // 最後の列のノードのsizeはCOLS
         headerNode.size = COLS;
-        // 先頭のカラムノードを返す
+        // 最後の列のカラムノードを返す
         return headerNode;
     }
     

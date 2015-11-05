@@ -17,8 +17,6 @@ class SudokuHandler implements SolutionHandler{
     public void handleSolution(List<DancingNode> answer){
     	// 二次元配列への変換
         int[][] result = parseBoard(answer);
-        // フィールドに代入
-        AbstractSudokuSolver.solvee = result;
     }
 
     private int[][] parseBoard(List<DancingNode> answer){

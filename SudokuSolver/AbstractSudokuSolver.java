@@ -5,7 +5,7 @@ abstract class AbstractSudokuSolver{
     
 	// 一辺のマス数
     protected int S = 9;
-    // 1ボックス当たりのマス数
+    // 1ボックス当たりの一辺のマス数
     protected int side = 3;
     
     // 外部に解答を渡すための二次元配列
@@ -19,9 +19,5 @@ abstract class AbstractSudokuSolver{
         S = sudoku.length;
         side = (int)Math.sqrt(S);
         runSolver(sudoku);
-    }
-    // 解答を外部に渡すゲッター
-    public static int[][] getResult(){
-    	return solvee;
-    }    
+    }   
 }
